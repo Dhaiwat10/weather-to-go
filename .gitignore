@@ -15,8 +15,12 @@ expo-env.d.ts
 *.jks
 *.p8
 *.p12
+*.cer
 *.key
 *.mobileprovision
+*.provisionprofile
+credentials.json
+/credentials/
 
 # Metro
 .metro-health-check*
@@ -31,7 +35,12 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env*
+!.env.example
+
+# local sharing artifacts
+/iphone-test-qr.png
+/iphone-test-qr.svg
 
 # typescript
 *.tsbuildinfo

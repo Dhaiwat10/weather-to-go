@@ -235,8 +235,23 @@ private enum WeatherLoader {
 
         var choices: [(priority: Int, kind: String, title: String, detail: String)] = []
         if rainMax >= 25 {
-            let title = rainMax >= 65 ? "Take an umbrella" : rainMax >= 45 ? "An umbrella is worth it" : "Rain is possible"
-            let detail = currentlyWet ? "Expect wet conditions over the next few hours." : "Wet weather is most likely \(rainTiming)."
+            let title = "Take an umbrella"
+            let detail: String
+            if currentlyStormy {
+                detail = "Thunderstorms are moving through now."
+            } else if currentlyWet {
+                detail = "Expect wet conditions over the next few hours."
+            } else if hasStorm {
+                detail = "Thunderstorms are possible \(stormTiming)."
+            } else if rainMax >= 85 {
+                detail = "Rain is almost certain \(rainTiming)."
+            } else if rainMax >= 65 {
+                detail = "Rain is likely \(rainTiming)."
+            } else if rainMax >= 45 {
+                detail = "Rain is about 50/50 \(rainTiming)."
+            } else {
+                detail = "Rain is possible \(rainTiming)."
+            }
             choices.append((rainMax >= 85 ? 100 : rainMax >= 65 ? 84 : rainMax >= 45 ? 67 : 44, "rain", title, detail))
         }
         if warmest >= 35 {
@@ -297,11 +312,25 @@ private enum WeatherLoader {
         let comparison = comparisonCopy(current: forecast.current.temperature, yesterday: yesterdayTemperature, units: config.units)
         var condition = conditionLabel(code: forecast.current.code, isDay: forecast.current.isDay != 0)
         var primaryTitle = selected?.title ?? condition
-        if selected?.kind == "rain",
-           let detail = selected?.detail,
-           detail.hasPrefix("Wet weather is most likely ") {
+        if selected?.kind == "rain", let detail = selected?.detail {
+            let presentation: (prefix: String, title: String)?
+            if detail.hasPrefix("Rain is almost certain ") {
+                presentation = ("Rain is almost certain ", "Rain")
+            } else if detail.hasPrefix("Rain is likely ") {
+                presentation = ("Rain is likely ", "Rain")
+            } else if detail.hasPrefix("Rain is about 50/50 ") {
+                presentation = ("Rain is about 50/50 ", "Rain 50/50")
+            } else if detail.hasPrefix("Rain is possible ") {
+                presentation = ("Rain is possible ", "Rain possible")
+            } else if detail.hasPrefix("Thunderstorms are possible ") {
+                presentation = ("Thunderstorms are possible ", "Storms possible")
+            } else {
+                presentation = nil
+            }
+
+            if let presentation {
             let timing = detail
-                .replacingOccurrences(of: "Wet weather is most likely ", with: "")
+                .replacingOccurrences(of: presentation.prefix, with: "")
                 .trimmingCharacters(in: CharacterSet(charactersIn: "."))
             let compactTiming: String
             if timing.hasPrefix("later this ") {
@@ -312,16 +341,13 @@ private enum WeatherLoader {
                 compactTiming = timing
             }
 
-            if selected?.title == "Take an umbrella" {
-                primaryTitle = "Rain \(compactTiming)"
-            } else {
-                primaryTitle = "Rain possible \(compactTiming)"
-            }
+            primaryTitle = "\(presentation.title) \(compactTiming)"
 
             if forecast.current.code == 0 {
                 condition = "Clear for now"
             } else if let code = forecast.current.code, code <= 2 {
                 condition = "Dry for now"
+            }
             }
         }
 

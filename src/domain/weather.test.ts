@@ -79,13 +79,13 @@ test('missing baselines do not create a comparative headline', () => {
 test('rain language uses practical confidence bands', () => {
   assert.equal(getRainGuidance(15).sentence, 'It should stay dry.');
   assert.equal(getRainGuidance(30).sentence, 'It might rain, but it might not.');
-  assert.equal(getRainGuidance(30).umbrella, 'Bring an umbrella');
+  assert.equal(getRainGuidance(30).umbrella, 'Take an umbrella');
   assert.equal(getRainGuidance(50).sentence, 'Rain is roughly 50/50.');
   assert.equal(getRainGuidance(70).sentence, 'It’ll probably rain.');
   assert.equal(getRainGuidance(90).sentence, 'Rain is almost certain.');
 });
 
-test('low-confidence rain uses a direct umbrella prompt without a repetitive subtitle', () => {
+test('low-confidence rain uses a direct umbrella prompt with calibrated detail', () => {
   const hourly = [
     point('2026-08-27T14:00', 24),
     { ...point('2026-08-28T14:00', 25), precipitationProbability: 10 },
@@ -105,8 +105,8 @@ test('low-confidence rain uses a direct umbrella prompt without a repetitive sub
 
   const umbrella = getPracticalAdvice(snapshot, deriveWeather(snapshot, 'metric')).actions
     .find((action) => action.kind === 'umbrella');
-  assert.equal(umbrella?.title, 'Bring an umbrella');
-  assert.equal(umbrella?.detail, '');
+  assert.equal(umbrella?.title, 'Take an umbrella');
+  assert.equal(umbrella?.detail, 'Rain is possible later this afternoon.');
 });
 
 test('clothing and sun advice produce direct actions', () => {
@@ -149,7 +149,7 @@ test('practical advice combines yesterday comparison with rain timing', () => {
   assert.equal(advice.comparisonLine, 'It’s 3° warmer than this time yesterday.');
   assert.equal(advice.headline, 'Rain is likely later this morning.');
   assert.equal(advice.actions[0].title, 'Take an umbrella');
-  assert.equal(advice.actions[0].detail, 'Wet weather is most likely later this morning.');
+  assert.equal(advice.actions[0].detail, 'Rain is likely later this morning.');
   assert.match(advice.rainLine ?? '', /Most likely later this morning/);
 });
 
@@ -174,7 +174,7 @@ test('clear conditions and future rain are presented as a sequence, not a contra
 
   const advice = getPracticalAdvice(snapshot, deriveWeather(snapshot, 'metric'));
   assert.equal(advice.headline, 'Rain is likely later this morning.');
-  assert.equal(advice.actions[0]?.detail, 'Wet weather is most likely later this morning.');
+  assert.equal(advice.actions[0]?.detail, 'Rain is likely later this morning.');
 
   const wetNow = {
     ...snapshot,

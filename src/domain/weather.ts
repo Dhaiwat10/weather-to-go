@@ -348,7 +348,7 @@ export function getRainGuidance(probability: number) {
   if (probability >= 85) return { sentence: 'Rain is almost certain.', umbrella: 'Take an umbrella', tone: 'blue' as const };
   if (probability >= 65) return { sentence: 'It’ll probably rain.', umbrella: 'Take an umbrella', tone: 'blue' as const };
   if (probability >= 45) return { sentence: 'Rain is roughly 50/50.', umbrella: 'Take an umbrella', tone: 'blue' as const };
-  if (probability >= 25) return { sentence: 'It might rain, but it might not.', umbrella: 'Bring an umbrella', tone: 'green' as const };
+  if (probability >= 25) return { sentence: 'It might rain, but it might not.', umbrella: 'Take an umbrella', tone: 'green' as const };
   return { sentence: 'It should stay dry.', umbrella: 'Leave it at home', tone: 'green' as const };
 }
 
@@ -472,9 +472,19 @@ export function getPracticalAdvice(
           ? `Rain is about 50/50 ${rainTimingPhrase}.`
           : baseHeadline;
   const rainTiming = currentlyWet ? '' : ` Most likely ${rainTimingPhrase}.`;
-  const rainActionDetail = currentlyWet
-    ? 'Expect wet conditions over the next few hours.'
-    : `Wet weather is most likely ${rainTimingPhrase}.`;
+  const rainActionDetail = currentlyStormy
+    ? 'Thunderstorms are moving through now.'
+    : currentlyWet
+      ? 'Expect wet conditions over the next few hours.'
+      : hasStorm
+        ? `Thunderstorms are possible ${stormTimingPhrase}.`
+        : rainMax >= 85
+          ? `Rain is almost certain ${rainTimingPhrase}.`
+          : rainMax >= 65
+            ? `Rain is likely ${rainTimingPhrase}.`
+            : rainMax >= 45
+              ? `Rain is about 50/50 ${rainTimingPhrase}.`
+              : `Rain is possible ${rainTimingPhrase}.`;
   const comparisonLine = derived.temperature?.significant
     ? `It’s ${derived.temperature.displayCopy} than this time yesterday.`
     : null;
@@ -486,8 +496,8 @@ export function getPracticalAdvice(
       priority: rainMax >= 85 ? 100 : rainMax >= 65 ? 84 : rainMax >= 45 ? 67 : 44,
       action: {
         kind: 'umbrella',
-        title: rainMax >= 65 ? 'Take an umbrella' : rainMax >= 45 ? 'An umbrella is worth it' : 'Bring an umbrella',
-        detail: rainMax < 45 ? '' : rainActionDetail,
+        title: 'Take an umbrella',
+        detail: rainActionDetail,
         symbol: 'umbrella.fill',
         tone: 'blue',
       },

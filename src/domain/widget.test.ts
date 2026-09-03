@@ -7,7 +7,7 @@ test('future rain is shown as a sequence beside a clear current condition', () =
     condition: 'Clear night',
     weatherCode: 0,
     primaryTitle: 'Take an umbrella',
-    primaryDetail: 'Wet weather is most likely later tonight.',
+    primaryDetail: 'Rain is likely later tonight.',
     primaryKind: 'umbrella',
   }), {
     condition: 'Clear for now',
@@ -33,7 +33,7 @@ test('lower-confidence future rain keeps its confidence and timing', () => {
     condition: 'Partly cloudy',
     weatherCode: 2,
     primaryTitle: 'Rain is possible',
-    primaryDetail: 'Wet weather is most likely later this morning.',
+    primaryDetail: 'Rain is possible later this morning.',
     primaryKind: 'rain',
   }), {
     condition: 'Dry for now',

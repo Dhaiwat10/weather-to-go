@@ -11,7 +11,13 @@ interface WidgetPresentation {
   primaryTitle: string;
 }
 
-const FUTURE_RAIN_PREFIX = 'Wet weather is most likely ';
+const FUTURE_RAIN_PRESENTATIONS = [
+  { prefix: 'Rain is almost certain ', title: 'Rain' },
+  { prefix: 'Rain is likely ', title: 'Rain' },
+  { prefix: 'Rain is about 50/50 ', title: 'Rain 50/50' },
+  { prefix: 'Rain is possible ', title: 'Rain possible' },
+  { prefix: 'Thunderstorms are possible ', title: 'Storms possible' },
+] as const;
 
 export function getWidgetPresentation({
   condition,
@@ -21,18 +27,18 @@ export function getWidgetPresentation({
   primaryKind,
 }: WidgetPresentationInput): WidgetPresentation {
   const isRainAdvice = primaryKind === 'umbrella' || primaryKind === 'rain';
-  const hasFutureTiming = isRainAdvice && primaryDetail.startsWith(FUTURE_RAIN_PREFIX);
+  const presentation = isRainAdvice
+    ? FUTURE_RAIN_PRESENTATIONS.find(({ prefix }) => primaryDetail.startsWith(prefix))
+    : undefined;
 
-  if (!hasFutureTiming) return { condition, primaryTitle };
+  if (!presentation) return { condition, primaryTitle };
 
   const timing = primaryDetail
-    .slice(FUTURE_RAIN_PREFIX.length)
+    .slice(presentation.prefix.length)
     .replace(/\.$/, '')
     .replace(/^later (?=this |tonight$)/, '');
 
-  const timedTitle = primaryTitle === 'Take an umbrella'
-    ? `Rain ${timing}`
-    : `Rain possible ${timing}`;
+  const timedTitle = `${presentation.title} ${timing}`;
 
   const currentCondition = weatherCode === 0
     ? 'Clear for now'

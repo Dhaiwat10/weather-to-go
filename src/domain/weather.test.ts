@@ -79,9 +79,34 @@ test('missing baselines do not create a comparative headline', () => {
 test('rain language uses practical confidence bands', () => {
   assert.equal(getRainGuidance(15).sentence, 'It should stay dry.');
   assert.equal(getRainGuidance(30).sentence, 'It might rain, but it might not.');
+  assert.equal(getRainGuidance(30).umbrella, 'Bring an umbrella');
   assert.equal(getRainGuidance(50).sentence, 'Rain is roughly 50/50.');
   assert.equal(getRainGuidance(70).sentence, 'It’ll probably rain.');
   assert.equal(getRainGuidance(90).sentence, 'Rain is almost certain.');
+});
+
+test('low-confidence rain uses a direct umbrella prompt without a repetitive subtitle', () => {
+  const hourly = [
+    point('2026-08-27T14:00', 24),
+    { ...point('2026-08-28T14:00', 25), precipitationProbability: 10 },
+    { ...point('2026-08-28T15:00', 25), precipitationProbability: 30 },
+  ];
+  const snapshot: WeatherSnapshot = {
+    timezone: 'America/Chicago',
+    timezoneAbbreviation: 'CDT',
+    current: hourly[1],
+    hourly,
+    daily: [
+      { date: '2026-08-27', weatherCode: 2, highC: 27, lowC: 18, precipitationProbabilityMax: 10, uvIndexMax: 3, sunrise: null, sunset: null },
+      { date: '2026-08-28', weatherCode: 2, highC: 28, lowC: 19, precipitationProbabilityMax: 30, uvIndexMax: 3, sunrise: null, sunset: null },
+    ],
+    fetchedAt: '2026-08-28T19:00:00Z',
+  };
+
+  const umbrella = getPracticalAdvice(snapshot, deriveWeather(snapshot, 'metric')).actions
+    .find((action) => action.kind === 'umbrella');
+  assert.equal(umbrella?.title, 'Bring an umbrella');
+  assert.equal(umbrella?.detail, '');
 });
 
 test('clothing and sun advice produce direct actions', () => {

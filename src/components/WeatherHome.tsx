@@ -66,7 +66,7 @@ function AdviceRow({ action, last }: { action: AdviceAction; last: boolean }) {
       </View>
       <View style={styles.adviceCopy}>
         <Text style={styles.adviceTitle}>{action.title}</Text>
-        <Text style={styles.adviceDetail}>{action.detail}</Text>
+        {action.detail ? <Text style={styles.adviceDetail}>{action.detail}</Text> : null}
       </View>
     </View>
   );

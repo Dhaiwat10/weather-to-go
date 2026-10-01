@@ -7,10 +7,6 @@
     "scheme": "weathercompared",
     "icon": "./assets/weather-to-go-icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#10203F"
-    },
     "ios": {
       "buildNumber": "9",
       "supportsTablet": false,
@@ -31,7 +27,6 @@
         "foregroundImage": "./assets/weather-to-go-icon.png",
         "backgroundColor": "#10203F"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -50,10 +45,19 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "17.0"
+            "deploymentTarget": "17.0",
+            "enableSceneSupport": true
           }
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#10203F"
+        }
+      ],
+      "expo-status-bar",
+      "expo-font"
     ],
     "extra": {
       "eas": {

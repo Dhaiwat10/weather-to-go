@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: 40,
   },
-  unitGlass: { ...StyleSheet.absoluteFillObject, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
+  unitGlass: { ...StyleSheet.absoluteFill, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth },
   unitText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   pressed: { opacity: 0.66, transform: [{ scale: 0.985 }] },
   hero: { alignItems: 'center', paddingBottom: 18, paddingTop: 12 },

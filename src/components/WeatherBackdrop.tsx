@@ -113,8 +113,8 @@ export function WeatherBackdrop({
 const styles = StyleSheet.create({
   glowLayer: { height: 420, position: 'absolute', right: -170, top: -190, width: 450 },
   glow: { borderRadius: 225, flex: 1 },
-  starLayer: { ...StyleSheet.absoluteFillObject },
+  starLayer: { ...StyleSheet.absoluteFill },
   star: { backgroundColor: '#FFFFFF', borderRadius: 2, height: 3, position: 'absolute', width: 3 },
-  rainLayer: { ...StyleSheet.absoluteFillObject },
+  rainLayer: { ...StyleSheet.absoluteFill },
   rainStreak: { backgroundColor: '#DDF4FF', borderRadius: 1, height: 46, position: 'absolute', transform: [{ rotate: '14deg' }], width: 1 },
 });

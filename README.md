@@ -41,4 +41,4 @@ npm test
 npx expo export --platform ios
 ```
 
-The app is built with Expo 54, React Native, TypeScript, WidgetKit, SF Symbols, and Open-Meteo.
+The app is built with Expo 57, React Native, TypeScript, WidgetKit, SF Symbols, and Open-Meteo. Its iOS build opts into the UIKit scene lifecycle so it can be built with Xcode 27.

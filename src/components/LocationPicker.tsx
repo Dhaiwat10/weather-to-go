@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   title: { color: '#FFFFFF', fontFamily: fonts.demi, fontSize: 29, fontWeight: '700', letterSpacing: -0.6, lineHeight: 36 },
   closeButton: { alignItems: 'center', borderRadius: 23, height: 46, justifyContent: 'center', overflow: 'hidden', width: 46 },
-  closeGlass: { ...StyleSheet.absoluteFillObject, borderColor: 'rgba(255,255,255,0.11)', borderRadius: 23, borderWidth: StyleSheet.hairlineWidth },
+  closeGlass: { ...StyleSheet.absoluteFill, borderColor: 'rgba(255,255,255,0.11)', borderRadius: 23, borderWidth: StyleSheet.hairlineWidth },
   pressed: { opacity: 0.65, transform: [{ scale: 0.98 }] },
   searchBox: {
     alignItems: 'center',

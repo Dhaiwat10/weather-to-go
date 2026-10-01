@@ -42,6 +42,29 @@ function uniquePlaceParts(parts: Array<string | null | undefined>): string[] {
   ));
 }
 
+function distanceMeters(
+  latitudeA: number,
+  longitudeA: number,
+  latitudeB: number,
+  longitudeB: number,
+): number {
+  const earthRadiusMeters = 6371000;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const deltaLat = toRadians(latitudeB - latitudeA);
+  const deltaLon = toRadians(longitudeB - longitudeA);
+  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+    + Math.cos(toRadians(latitudeA))
+      * Math.cos(toRadians(latitudeB))
+      * Math.sin(deltaLon / 2)
+      * Math.sin(deltaLon / 2);
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(a));
+}
+
+// Weather doesn't meaningfully change within a few blocks, and reverse-geocoding
+// on every GPS jitter would waste battery and hit geocoding limits. Only treat
+// moves beyond this as "went to a different place" like Apple Weather does.
+const FOLLOW_MOVE_THRESHOLD_METERS = 1000;
+
 async function namedCurrentLocation(latitude: number, longitude: number): Promise<LocationSelection> {
   try {
     const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
@@ -142,6 +165,7 @@ function WeatherToGoApp() {
   const snapshotRef = useRef<WeatherSnapshot | null>(null);
   const locationRef = useRef<LocationSelection | null>(null);
   const lastRefreshRef = useRef(0);
+  const followUpdateInFlightRef = useRef(false);
 
   useEffect(() => {
     snapshotRef.current = snapshot;
@@ -182,6 +206,52 @@ function WeatherToGoApp() {
     }
   }, []);
 
+  const applyFollowCoordinates = useCallback(async (
+    latitude: number,
+    longitude: number,
+  ): Promise<boolean> => {
+    const current = locationRef.current;
+    if (!current || current.source !== 'geolocation') return false;
+    if (
+      distanceMeters(current.latitude, current.longitude, latitude, longitude)
+      < FOLLOW_MOVE_THRESHOLD_METERS
+    ) {
+      return false;
+    }
+    if (followUpdateInFlightRef.current) return false;
+    followUpdateInFlightRef.current = true;
+    try {
+      const next = await namedCurrentLocation(latitude, longitude);
+      // The user may have picked a fixed city while reverse-geocoding was in flight.
+      if (!locationRef.current || locationRef.current.source !== 'geolocation') return false;
+      locationRef.current = next;
+      setLocation(next);
+      setStaleMessage(null);
+      setError(null);
+      void saveLocation(next);
+      const kind = snapshotRef.current ? 'background' : 'initial';
+      void loadWeather(next, kind);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      followUpdateInFlightRef.current = false;
+    }
+  }, [loadWeather]);
+
+  const refreshFollowLocation = useCallback(async (): Promise<boolean> => {
+    try {
+      const permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== Location.PermissionStatus.GRANTED) return false;
+      const result = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return applyFollowCoordinates(result.coords.latitude, result.coords.longitude);
+    } catch {
+      return false;
+    }
+  }, [applyFollowCoordinates]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -197,17 +267,36 @@ function WeatherToGoApp() {
         // A clean local fallback keeps first launch moving if storage is unavailable.
       }
 
-      const target = savedLocation?.source === 'geolocation'
-        && (savedLocation.name === 'Current location' || savedLocation.name === 'Current area')
-        ? await namedCurrentLocation(savedLocation.latitude, savedLocation.longitude)
-        : savedLocation ?? await initialLocation();
+      let target: LocationSelection;
+      if (savedLocation?.source === 'geolocation') {
+        // Follow mode: never trust stale coordinates. Ask for a fresh fix so a
+        // different city shows up immediately, falling back to the last known
+        // spot only if GPS is unavailable.
+        try {
+          const permission = await Location.getForegroundPermissionsAsync();
+          if (permission.status === Location.PermissionStatus.GRANTED) {
+            const result = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            target = await namedCurrentLocation(result.coords.latitude, result.coords.longitude);
+          } else if (permission.canAskAgain) {
+            target = await initialLocation();
+          } else {
+            target = await namedCurrentLocation(savedLocation.latitude, savedLocation.longitude);
+          }
+        } catch {
+          target = await namedCurrentLocation(savedLocation.latitude, savedLocation.longitude);
+        }
+      } else {
+        target = savedLocation ?? await initialLocation();
+      }
       if (!mounted) return;
 
       setUnits(savedUnits ?? defaultUnitsForLocale(currentLocale()));
       setLocation(target);
       locationRef.current = target;
       setHydrated(true);
-      if (!savedLocation) void saveLocation(target);
+      if (!savedLocation || target.source === 'geolocation') void saveLocation(target);
       void loadWeather(target, 'initial');
     })();
 
@@ -217,18 +306,59 @@ function WeatherToGoApp() {
     };
   }, [loadWeather]);
 
+  const isFollowingCurrentLocation = location?.source === 'geolocation';
+
+  useEffect(() => {
+    if (!hydrated || !isFollowingCurrentLocation) return;
+    let subscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
+
+    // Foreground-only follower (expo-location v54 watchPositionAsync). Updates
+    // arrive only while the app is open; background stays off so no extra
+    // entitlements or App Store review are needed. distanceInterval keeps GPS
+    // cheap until the user actually moves.
+    void (async () => {
+      try {
+        const permission = await Location.getForegroundPermissionsAsync();
+        if (cancelled || permission.status !== Location.PermissionStatus.GRANTED) return;
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            distanceInterval: FOLLOW_MOVE_THRESHOLD_METERS,
+          },
+          (update) => {
+            void applyFollowCoordinates(update.coords.latitude, update.coords.longitude);
+          },
+        );
+      } catch {
+        // Watch failures are non-fatal: foreground refresh below still catches moves.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [hydrated, isFollowingCurrentLocation, applyFollowCoordinates]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (
-        state === 'active'
-        && locationRef.current
-        && Date.now() - lastRefreshRef.current > 15 * 60 * 1000
-      ) {
+      if (state !== 'active' || !locationRef.current) return;
+      if (locationRef.current.source === 'geolocation') {
+        // Returning from another city: re-fix GPS first, then fall back to a
+        // timed weather refresh if the user hasn't actually moved.
+        void (async () => {
+          const moved = await refreshFollowLocation();
+          if (!moved && Date.now() - lastRefreshRef.current > 15 * 60 * 1000) {
+            void loadWeather(locationRef.current as LocationSelection, 'background');
+          }
+        })();
+      } else if (Date.now() - lastRefreshRef.current > 15 * 60 * 1000) {
         void loadWeather(locationRef.current, 'background');
       }
     });
     return () => subscription.remove();
-  }, [loadWeather]);
+  }, [loadWeather, refreshFollowLocation]);
 
   const chooseLocation = useCallback((nextLocation: LocationSelection) => {
     setPickerOpen(false);
